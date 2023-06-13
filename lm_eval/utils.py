@@ -1,3 +1,4 @@
+import os
 import math
 import warnings
 from collections import defaultdict
@@ -111,6 +112,7 @@ def complete_code(
     batch_size=20,
     prefix="",
     postprocess=True,
+    save_generations_path=None,
     **gen_kwargs,
 ):
     """Generate multiple codes for each task in the dataset using multiple GPUs with accelerate.
@@ -119,13 +121,41 @@ def complete_code(
     and nt is the number of tasks. nc is such that num_samples(for each task)= nc * batch_size
     """
 
-    gen_token_dict = defaultdict(list)  # dict of list of generated tokens
+    if save_generations_path is not None:
+        if accelerator.num_processes > 1:
+            print(
+                "Warning: Saving intermediate results is not supported for accelerate. Results will be saved at the end."
+            )
+            tmp_save_generations_path = None
+        else:
+            tmp_save_generations_path = save_generations_path.replace(".json", "_tmp.pkl")
+    else:
+        tmp_save_generations_path = None
+
+    if tmp_save_generations_path is not None and accelerator.is_local_main_process and os.path.exists(tmp_save_generations_path):
+        print(f"Loading intermediate results from {tmp_save_generations_path}")
+        log = torch.load(tmp_save_generations_path)
+        gen_token_dict = log["gen_token_dict"]
+        prv_step = log["step"]
+    else:
+        gen_token_dict = defaultdict(list)  # dict of list of generated tokens
+        prv_step = -1
+
+    total_steps = math.ceil(n_tasks * dataloader.dataset.n_copies / accelerator.num_processes)
     for step, batch in tqdm(
         enumerate(dataloader),
-        total=math.ceil(
-            n_tasks * dataloader.dataset.n_copies / accelerator.num_processes
-        ),
+        total=total_steps,
     ):
+        if step < prv_step:
+            continue
+        if (step+1) % (total_steps//100) == 0:
+            print(f"Completed {100*(step+1)/total_steps:.1f}% of generation")
+            if tmp_save_generations_path is not None and accelerator.is_local_main_process:
+                print(f"Saving intermediate results at {tmp_save_generations_path}")
+                torch.save(
+                    {"gen_token_dict": gen_token_dict, "step": step},
+                    tmp_save_generations_path,
+                )
         with torch.no_grad():
             if task.stop_words:
                 # Set the start_length after which to check for stopping to be the longest input ignoring padding
