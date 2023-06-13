@@ -2,8 +2,12 @@ from pprint import pprint
 
 from . import (apps, codexglue_code_to_text, codexglue_text_to_text, conala,
                concode, ds1000, gsm, humaneval, mbpp, multiple,
-               humaneval_postprompt, humaneval_simple_feedback,
-               humaneval_pyflakes_feedback)
+               humaneval_postprompt,
+               humaneval_simple_feedback,
+               humaneval_simple_feedback_cf,
+               humaneval_pyflakes_feedback,
+               humaneval_pyflakes_feedback_cf,
+               )
 
 TASK_REGISTRY = {
     **apps.create_all_tasks(),
@@ -17,7 +21,9 @@ TASK_REGISTRY = {
     "humaneval": humaneval.HumanEval,
     "humaneval_postprompt": humaneval_postprompt.HumanEval,
     "humaneval_simple_feedback": humaneval_simple_feedback.HumanEval,
+    "humaneval_simple_feedback_cf": humaneval_simple_feedback_cf.HumanEval,
     "humaneval_pyflakes_feedback": humaneval_pyflakes_feedback.HumanEval,
+    "humaneval_pyflakes_feedback_cf": humaneval_pyflakes_feedback_cf.HumanEval,
     "mbpp": mbpp.MBPP,
     **gsm.create_all_tasks(),
 }

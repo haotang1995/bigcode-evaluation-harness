@@ -1,3 +1,5 @@
+# @Hao @Jun 12, 2023
+# Just add a comment mark before the Feedbacks
 """Evaluating Large Language Models Trained on Code
 https://arxiv.org/abs/2107.03374
 
@@ -37,7 +39,7 @@ class HumanEval(Task):
 
     def __init__(self):
         super().__init__(
-            stop_words=["\nclass", "\ndef", "\n#", "\n@", "\nprint", "\nif", "\nFeedback"],
+            stop_words=["\nclass", "\ndef", "\n#", "\n@", "\nprint", "\nif", "\nFeedback", '\n"""'],
             requires_execution=True,
         )
 
@@ -94,8 +96,8 @@ class HumanEval(Task):
         for round_num in range(self.num_of_rounds):
             previous_generation = doc[f"prv_gen_round_{round_num}"]
             previous_generation = previous_generation.strip()
-            prompt += previous_generation + '\nFeedback: The above function returns the following errors:\n"""\n%s"""\nSo, the code is incorrect. Please fix it.\n\n'%(
-                '\n'.join(doc[f"prv_gen_round_{round_num}_pyflakes_errors"])
+            prompt += previous_generation + '\n"""\nFeedback: The above function returns the following errors:\n%s\nSo, the code is incorrect. Please fix it.\n"""\n\n'%(
+                '\n\t'.join(doc[f"prv_gen_round_{round_num}_pyflakes_errors"])
             )
         prompt += original_prompt
         return prompt
@@ -132,7 +134,7 @@ class HumanEval(Task):
         prompt = self.get_prompt(self.processed_dataset[idx])
         generation = generation[len(prompt) :]
         prompt = prompt[prompt.rfind('Please fix it.'):].strip()
-        prompt = prompt[prompt.find('\n') + 1 :].strip()
+        prompt = prompt[prompt.find('"""') + 4 :].strip()
         return prompt + self._stop_at_stop_token(generation, self.stop_words)
 
     def postprocess(self, generations, references):

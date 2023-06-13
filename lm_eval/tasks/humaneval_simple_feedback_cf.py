@@ -1,3 +1,5 @@
+#@Hao @Jun 12, 2023
+#Just add comment mark before the feedback
 """Evaluating Large Language Models Trained on Code
 https://arxiv.org/abs/2107.03374
 
@@ -8,7 +10,6 @@ They were handwritten to ensure not to be included in the training set of code g
 Homepage: https://github.com/openai/human-eval
 """
 
-import os
 import json
 import re
 import copy
@@ -37,7 +38,7 @@ class HumanEval(Task):
 
     def __init__(self):
         super().__init__(
-            stop_words=["\nclass", "\ndef", "\n#", "\n@", "\nprint", "\nif", "\nFeedback"],
+            stop_words=["\nclass", "\ndef", "\n#", "\n@", "\nprint", "\nif", "\nFeedback", '\n"""',],
             requires_execution=True,
         )
 
@@ -48,7 +49,6 @@ class HumanEval(Task):
             return self.dataset['test']
 
         previous_generations = [] # [round_num, doc_num, n_samples]
-        previous_generation_pyflakes_errors = [] # [round_num, doc_num, n_samples]
         previous_n_samples = []
         for gen_path in previous_generation_path:
             with open(gen_path, "r") as f:
@@ -59,15 +59,6 @@ class HumanEval(Task):
             assert len(previous_n_samples) == 0 or previous_n_samples[-1] % n_samples_list[0] == 0, "The number of samples in the previous generation must be a multiple of the number of samples in the current generation"
             previous_n_samples.append(n_samples_list[0])
             previous_generations.append(gen)
-
-            dirname, basename = os.path.split(gen_path)
-            error_path = os.path.join(dirname, "check_syntax_results", basename)
-            with open(error_path, "r") as f:
-                pyflakes_errors = json.load(f)
-                assert len(self.dataset['test']) == len(pyflakes_errors), "Previous generation must have the same length as the dataset"
-            assert len(set([len(ggen) for ggen in pyflakes_errors])) == 1, "All previous generations must have the same number of samples"
-            assert len(pyflakes_errors[0]) == n_samples_list[0], "The number of samples in the previous generation must be a multiple of the number of samples in the current generation"
-            previous_generation_pyflakes_errors.append(pyflakes_errors)
 
         self.num_of_rounds = len(previous_generations)
         self.previous_n_samples = previous_n_samples
@@ -80,7 +71,6 @@ class HumanEval(Task):
                 sample = copy.deepcopy(doc)
                 for round_num in range(len(previous_generations)):
                     sample[f"prv_gen_round_{round_num}"] = previous_generations[round_num][doc_num][sample_num//self.previous_n_samples[round_num]]
-                    sample[f"prv_gen_round_{round_num}_pyflakes_errors"] = previous_generation_pyflakes_errors[round_num][doc_num][sample_num//self.previous_n_samples[round_num]]
                 dataset.append(sample)
         assert(len(dataset) == len(self.dataset["test"]) * self.n_samples)
 
@@ -94,9 +84,7 @@ class HumanEval(Task):
         for round_num in range(self.num_of_rounds):
             previous_generation = doc[f"prv_gen_round_{round_num}"]
             previous_generation = previous_generation.strip()
-            prompt += previous_generation + '\nFeedback: The above function returns the following errors:\n"""\n%s"""\nSo, the code is incorrect. Please fix it.\n\n'%(
-                '\n'.join(doc[f"prv_gen_round_{round_num}_pyflakes_errors"])
-            )
+            prompt += previous_generation + '\n# Feedback: The code above is incorrect. Please fix it.\n\n'
         prompt += original_prompt
         return prompt
 
@@ -131,7 +119,7 @@ class HumanEval(Task):
         """
         prompt = self.get_prompt(self.processed_dataset[idx])
         generation = generation[len(prompt) :]
-        prompt = prompt[prompt.rfind('Please fix it.'):].strip()
+        prompt = prompt[prompt.rfind('# Feedback'):].strip()
         prompt = prompt[prompt.find('\n') + 1 :].strip()
         return prompt + self._stop_at_stop_token(generation, self.stop_words)
 

@@ -116,9 +116,9 @@ class HumanEval(Task):
             (not used for Humaneval-Task)
         """
         prompt = self.get_prompt(self.processed_dataset[idx])
+        generation = generation[len(prompt) :]
         prompt = prompt[prompt.rfind('Feedback'):].strip()
         prompt = prompt[prompt.find('\n') + 1 :].strip()
-        generation = generation[len(prompt) :]
         return prompt + self._stop_at_stop_token(generation, self.stop_words)
 
     def postprocess(self, generations, references):

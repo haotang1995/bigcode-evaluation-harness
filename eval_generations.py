@@ -20,7 +20,7 @@ def main():
         os.makedirs(eval_dir)
     eval_filename_list = os.listdir(eval_dir)
     for fn in os.listdir(generation_dir):
-        if fn.endswith('.json') and fn not in eval_filename_list:
+        if fn.endswith('.json') and (fn not in eval_filename_list or osp.getctime(osp.join(generation_dir, fn)) > osp.getctime(osp.join(eval_dir, fn))):
             print('Evaluating {}'.format(fn))
             with open(osp.join(generation_dir, fn), 'r') as f:
                 gen = json.load(f)

@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# coding=utf-8
+
+# Given a filename in generation_results,
+# Retrieve its eval_results & check_syntax_results
+# Analyze the results and print out the statistics (including the pass@1,
+# failure patterns and their counts, pass@1 before and after filtering out the
+# syntax errors)
+# Usage: python analyze_failures.py <filename>
+
+import sys
+import os
+import json
+import numpy as np
+
+current_dir = os.path.dirname(os.path.realpath(__file__))
+generation_results_dir = os.path.join(current_dir, 'generation_results')
+generation_filenames = os.listdir(generation_results_dir)
+eval_results_dir = os.path.join(generation_results_dir, 'eval_results')
+eval_results_filenames = os.listdir(eval_results_dir)
+check_syntax_results_dir = os.path.join(generation_results_dir, 'check_syntax_results')
+check_syntax_results_filenames = os.listdir(check_syntax_results_dir)
+
+def main():
+    fn = os.path.basename(sys.argv[1])
+    if not fn.endswith('.json') or fn not in generation_filenames:
+        print('Error: Invalid filename: %s' % fn)
+        return
+
+    # Read eval_results
+    eval_results_fn = os.path.join(eval_results_dir, fn)
+    with open(eval_results_fn, 'r') as f:
+        eval_results = json.load(f)
+        pass_at_k = eval_results['results']
+        print('Eval results:', pass_at_k)
+        eval_results = list(eval_results['out'].values())
+        eval_results = [[er[1] for er in eval_result] for eval_result in eval_results]
+        assert(len(eval_results) == 164), "Error: This script is only valid for testing human-eval"
+
+    # Read check_syntax_results
+    check_syntax_results_fn = os.path.join(check_syntax_results_dir, fn)
+    with open(check_syntax_results_fn, 'r') as f:
+        check_syntax_results = json.load(f) # a list of a list of a list of errors (str)
+        assert(len(check_syntax_results) == 164), "Error: This script is only valid for testing human-eval"
+        assert(len(check_syntax_results[0]) == len(eval_results[0])), (len(check_syntax_results[0]), len(eval_results[0]), check_syntax_results[0], eval_results[0])
+
+    # Analyze the results
+    # Filter out the syntax errors
+    no_syntax_error_eval_results = [[
+        er for er, sr in zip(eval_result, syntax_result) if len(sr) == 0
+    ] for eval_result, syntax_result in zip(eval_results, check_syntax_results)]
+    with_syntax_error_eval_results = [er for er, no_sr_er in zip(eval_results, no_syntax_error_eval_results) if len(no_sr_er) > 0]
+    no_syntax_error_eval_results = [er for er in no_syntax_error_eval_results if len(er) > 0]
+    print("Number of examples with full syntax errors: %d" % (len(eval_results) - len(no_syntax_error_eval_results)))
+    print('Pass@1 before filtering out syntax errors: %.4f' % (np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in with_syntax_error_eval_results])))
+    print('Pass@1 after filtering out syntax errors: %.4f' % (np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in no_syntax_error_eval_results])))
+
+if __name__ == '__main__':
+    main()
