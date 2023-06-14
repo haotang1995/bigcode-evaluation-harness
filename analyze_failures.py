@@ -8,52 +8,100 @@
 # syntax errors)
 # Usage: python analyze_failures.py <filename>
 
-import sys
+import argparse
 import os
 import json
 import numpy as np
 
-current_dir = os.path.dirname(os.path.realpath(__file__))
-generation_results_dir = os.path.join(current_dir, 'generation_results')
-generation_filenames = os.listdir(generation_results_dir)
-eval_results_dir = os.path.join(generation_results_dir, 'eval_results')
-eval_results_filenames = os.listdir(eval_results_dir)
-check_syntax_results_dir = os.path.join(generation_results_dir, 'check_syntax_results')
-check_syntax_results_filenames = os.listdir(check_syntax_results_dir)
+from datasets import load_dataset
 
-def main():
-    fn = os.path.basename(sys.argv[1])
+def get_failure_pattern(generations, eval_results, data=None,):
+    verbose_data = False
+    if data is not None:
+        verbose_data = True
+        # Show data samples
+        print("@Task-ID:", data['task_id'])
+        print("@Prompt:", data['prompt'])
+        print("@Test:", data['test'])
+        print("@Canonical-Solution:", data['canonical_solution'])
+
+    # Print pass@1
+    print('Pass@1: %.4f' % (np.mean([er['passed'] for er in eval_results])))
+
+    total_samples = len(eval_results)
+    failed_samples = len([er for er in eval_results if not er['passed']])
+
+    failed_reasons = [er['result'].lower().strip() for er in eval_results if not er['passed']]
+    failed_reasons_count = sorted([(fr, failed_reasons.count(fr)) for fr in set(failed_reasons)], key=lambda x: x[1], reverse=True)
+    print('Failure patterns:')
+    for fi, (fr, count) in enumerate(failed_reasons_count):
+        if fi >= 10 and count/total_samples < 0.01:
+            break
+        print('----')
+        # Print failure, count, and the potential improvement if solved
+        print('%s: %d (%.2f%%)' % (fr, count, count / total_samples * 100))
+        if verbose_data:
+            # Print the corresponding generations
+            generation_cnt = 0
+            print('Corresponding generations:')
+            for generation, er in zip(generations, eval_results):
+                if not er['passed'] and er['result'].lower().strip() == fr:
+                    print(generation)
+                    generation_cnt += 1
+                    if generation_cnt >= 5:
+                        break
+            print('')
+        print('----')
+
+def main(args):
+    dataset = load_dataset('openai_humaneval',)['test']
+
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    generation_results_dir = os.path.join(current_dir, 'generation_results')
+    generation_filenames = os.listdir(generation_results_dir)
+    eval_results_dir = os.path.join(generation_results_dir, 'eval_results')
+    eval_results_filenames = os.listdir(eval_results_dir)
+
+    fn = os.path.basename(args.filename)
     if not fn.endswith('.json') or fn not in generation_filenames:
         print('Error: Invalid filename: %s' % fn)
         return
+
+    # Read generations
+    generation_fn = os.path.join(generation_results_dir, fn)
+    with open(generation_fn, 'r') as f:
+        generations = json.load(f)
+        assert(len(generations) == 164), "Error: This script is only valid for testing human-eval"
 
     # Read eval_results
     eval_results_fn = os.path.join(eval_results_dir, fn)
     with open(eval_results_fn, 'r') as f:
         eval_results = json.load(f)
         pass_at_k = eval_results['results']
-        print('Eval results:', pass_at_k)
+        # print('Eval results:', pass_at_k)
         eval_results = list(eval_results['out'].values())
         eval_results = [[er[1] for er in eval_result] for eval_result in eval_results]
         assert(len(eval_results) == 164), "Error: This script is only valid for testing human-eval"
+        assert(len(eval_results[0]) == len(generations[0])), "Error: The number of generations and eval_results are not equal"
 
-    # Read check_syntax_results
-    check_syntax_results_fn = os.path.join(check_syntax_results_dir, fn)
-    with open(check_syntax_results_fn, 'r') as f:
-        check_syntax_results = json.load(f) # a list of a list of a list of errors (str)
-        assert(len(check_syntax_results) == 164), "Error: This script is only valid for testing human-eval"
-        assert(len(check_syntax_results[0]) == len(eval_results[0])), (len(check_syntax_results[0]), len(eval_results[0]), check_syntax_results[0], eval_results[0])
+    if args.task_id is None:
+        # Analayze the failure patterns of the whole dataset, first
+        print('Failure patterns of the whole dataset:')
+        get_failure_pattern(None, [er for eval_result in eval_results for er in eval_result])
 
-    # Analyze the results
-    # Filter out the syntax errors
-    no_syntax_error_eval_results = [[
-        er for er, sr in zip(eval_result, syntax_result) if len(sr) == 0
-    ] for eval_result, syntax_result in zip(eval_results, check_syntax_results)]
-    with_syntax_error_eval_results = [er for er, no_sr_er in zip(eval_results, no_syntax_error_eval_results) if len(no_sr_er) > 0]
-    no_syntax_error_eval_results = [er for er in no_syntax_error_eval_results if len(er) > 0]
-    print("Number of examples with full syntax errors: %d" % (len(eval_results) - len(no_syntax_error_eval_results)))
-    print('Pass@1 before filtering out syntax errors: %.4f' % (np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in with_syntax_error_eval_results])))
-    print('Pass@1 after filtering out syntax errors: %.4f' % (np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in no_syntax_error_eval_results])))
+    if args.task_id is not None:
+        # Analyze the failure patterns of each task
+        task_id = args.task_id
+        print('====================')
+        print('Failure patterns of task %d:' % task_id)
+        get_failure_pattern(generations[task_id], eval_results[task_id], data=dataset[task_id])
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename', type=str, help='The filename in generation_results')
+    parser.add_argument('--task_id', type=int, default=None, help='The task_id of the filename')
+    return parser.parse_args()
 
 if __name__ == '__main__':
-    main()
+    args = get_args()
+    main(args)

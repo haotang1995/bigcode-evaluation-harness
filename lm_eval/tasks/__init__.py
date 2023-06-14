@@ -7,6 +7,7 @@ from . import (apps, codexglue_code_to_text, codexglue_text_to_text, conala,
                humaneval_simple_feedback_cf,
                humaneval_pyflakes_feedback,
                humaneval_pyflakes_feedback_cf,
+               humaneval_cv,
                )
 
 TASK_REGISTRY = {
@@ -24,6 +25,7 @@ TASK_REGISTRY = {
     "humaneval_simple_feedback_cf": humaneval_simple_feedback_cf.HumanEval,
     "humaneval_pyflakes_feedback": humaneval_pyflakes_feedback.HumanEval,
     "humaneval_pyflakes_feedback_cf": humaneval_pyflakes_feedback_cf.HumanEval,
+    "humaneval_cv": humaneval_cv.HumanEval,
     "mbpp": mbpp.MBPP,
     **gsm.create_all_tasks(),
     **instruct_humaneval.create_all_tasks(),
