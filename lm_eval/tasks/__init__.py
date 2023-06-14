@@ -1,7 +1,7 @@
 from pprint import pprint
 
 from . import (apps, codexglue_code_to_text, codexglue_text_to_text, conala,
-               concode, ds1000, gsm, humaneval, mbpp, multiple,
+               concode, ds1000, gsm, humaneval, mbpp, multiple, instruct_humaneval,
                humaneval_postprompt,
                humaneval_simple_feedback,
                humaneval_simple_feedback_cf,
@@ -26,6 +26,7 @@ TASK_REGISTRY = {
     "humaneval_pyflakes_feedback_cf": humaneval_pyflakes_feedback_cf.HumanEval,
     "mbpp": mbpp.MBPP,
     **gsm.create_all_tasks(),
+    **instruct_humaneval.create_all_tasks(),
 }
 
 ALL_TASKS = sorted(list(TASK_REGISTRY))
