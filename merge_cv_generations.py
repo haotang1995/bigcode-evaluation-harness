@@ -40,6 +40,8 @@ def main(args):
         cur_cv_gen_filenames = sorted([fn for fn in cv_gen_filenames if remove_fold_from_filename(fn) == gen_filename])
         if osp.exists(osp.join(gen_dir, gen_filename)) and osp.getctime(osp.join(gen_dir, gen_filename)) > osp.getctime(osp.join(cv_gen_dir, cur_cv_gen_filenames[0])):
             continue
+        if len(cur_cv_gen_filenames) < 5:
+            continue
         assert(len(cur_cv_gen_filenames) == 5), (gen_filename, cur_cv_gen_filenames)
         print("Merging %s" % gen_filename)
 
