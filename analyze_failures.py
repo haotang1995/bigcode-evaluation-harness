@@ -16,42 +16,63 @@ import numpy as np
 from datasets import load_dataset
 
 def get_failure_pattern(generations, eval_results, data=None,):
+    total_samples = len(eval_results)
+    failed_samples = len([er for er in eval_results if not er['passed']])
+    pass_at_1 = 1 - failed_samples / total_samples
+
     verbose_data = False
     if data is not None:
         verbose_data = True
         # Show data samples
         print("@Task-ID:", data['task_id'])
         print("@Prompt:", data['prompt'])
-        print("@Test:", data['test'])
-        print("@Canonical-Solution:", data['canonical_solution'])
+        if pass_at_1 <= 0.98:
+            print("@Test:", data['test'])
+            print("@Canonical-Solution:", data['canonical_solution'])
 
     # Print pass@1
-    print('Pass@1: %.4f' % (np.mean([er['passed'] for er in eval_results])))
+    print('Pass@1: %.2f%%' % (pass_at_1*100))
 
-    total_samples = len(eval_results)
-    failed_samples = len([er for er in eval_results if not er['passed']])
+    if not verbose_data:
+        # Print more analysis task-wise
+        assert(len(eval_results) % 164 == 0), "Error: The number of generations is not a multiple of 164"
+        sample_num = len(eval_results) // 164
+        reshaped_eval_results = [eval_results[i:i+sample_num] for i in range(0, len(eval_results), 164)]
+        pass_at_1_list = [np.mean([1 if er['passed'] else 0 for er in eval_result]) for eval_result in reshaped_eval_results]
+        # Percentage of pass@1 == 0
+        print('Pass@1 <= 5%%: %.2f%%' % (len([p for p in pass_at_1_list if p <= 0.05]) / len(pass_at_1_list) * 100))
+        # Percentage of pass@1 == 1
+        print('Pass@1 >= 95%%: %.2f%%' % (len([p for p in pass_at_1_list if p >= 0.95]) / len(pass_at_1_list) * 100))
+        # Quantile of pass@1
+        for q in [0.25, 0.5, 0.75]:
+            print('Pass@1 quantile == %.2f: %.2f%%' % (q, np.quantile(pass_at_1_list, q) * 100))
 
     failed_reasons = [er['result'].lower().strip() for er in eval_results if not er['passed']]
     failed_reasons_count = sorted([(fr, failed_reasons.count(fr)) for fr in set(failed_reasons)], key=lambda x: x[1], reverse=True)
-    print('Failure patterns:')
-    for fi, (fr, count) in enumerate(failed_reasons_count):
-        if fi >= 10 and count/total_samples < 0.01:
-            break
-        print('----')
-        # Print failure, count, and the potential improvement if solved
-        print('%s: %d (%.2f%%)' % (fr, count, count / total_samples * 100))
-        if verbose_data:
-            # Print the corresponding generations
-            generation_cnt = 0
-            print('Corresponding generations:')
-            for generation, er in zip(generations, eval_results):
-                if not er['passed'] and er['result'].lower().strip() == fr:
-                    print(generation)
-                    generation_cnt += 1
-                    if generation_cnt >= 5:
-                        break
-            print('')
-        print('----')
+    if pass_at_1 <= 0.98:
+        print('Failure patterns:')
+        for fi, (fr, count) in enumerate(failed_reasons_count):
+            if fi >= 10 and count/total_samples < 0.01:
+                break
+            print('----')
+            # Print failure, count, and the potential improvement if solved
+            print('%s: %d (%.2f%%)' % (fr, count, count / total_samples * 100))
+            if verbose_data:
+                # Print the corresponding generations
+                generation_cnt = 0
+                print('Corresponding generations:')
+                for generation, er in zip(generations, eval_results):
+                    if not er['passed'] and er['result'].lower().strip() == fr:
+                        print(generation)
+                        generation_cnt += 1
+                        if generation_cnt >= 5:
+                            break
+                print('')
+            print('----')
+    elif verbose_data:
+        print('No failure patterns')
+        print(generations[0])
+
 
 def main(args):
     dataset = load_dataset('openai_humaneval',)['test']
