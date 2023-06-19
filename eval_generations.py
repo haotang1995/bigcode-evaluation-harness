@@ -4,6 +4,7 @@
 from datasets import load_dataset
 from evaluate import load
 
+import random
 import json
 import os, os.path as osp
 os.environ['HF_ALLOW_CODE_EVAL'] = '1'
@@ -19,7 +20,10 @@ def main():
     if not osp.exists(eval_dir):
         os.makedirs(eval_dir)
     eval_filename_list = os.listdir(eval_dir)
-    for fn in os.listdir(generation_dir):
+
+    generation_filenames = os.listdir(generation_dir)
+    random.shuffle(generation_filenames)
+    for fn in generation_filenames:
         if fn.endswith('.json') and (fn not in eval_filename_list or osp.getctime(osp.join(generation_dir, fn)) > osp.getctime(osp.join(eval_dir, fn))):
             print('Evaluating {}'.format(fn))
             with open(osp.join(generation_dir, fn), 'r') as f:
