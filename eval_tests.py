@@ -3,13 +3,14 @@
 
 import os, os.path as osp
 import json
+import random
 
 from evaluate import load
 from datasets import load_dataset
 
 os.environ['HF_ALLOW_CODE_EVAL'] = '1'
 datasets = load_dataset('openai_humaneval')
-code_eval = load('code_eval')
+code_eval = load('code_eval',)
 
 def eval_test_case(data, test_case):
     # test_case: {'args': List, 'out': Any, 'line': str,}
@@ -101,6 +102,7 @@ def main(curdir):
 
     filenames = os.listdir(parse_dir)
     filenames = [f for f in filenames if f.endswith('.json')]
+    random.shuffle(filenames)
     for fn in filenames:
         eval_parse_file(fn, parse_dir, eval_dir)
 
