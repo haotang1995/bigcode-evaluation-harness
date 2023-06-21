@@ -236,7 +236,7 @@ def complete_code(
     ):
         if step < prv_step:
             continue
-        if (step+1) % (total_steps//100) == 0:
+        if total_steps//100 and (step+1) % (total_steps//100) == 0:
             print(f"Completed {100*(step+1)/total_steps:.1f}% of generation")
             if tmp_save_generations_path is not None and accelerator.is_local_main_process:
                 print(f"Saving intermediate results at {tmp_save_generations_path}")
