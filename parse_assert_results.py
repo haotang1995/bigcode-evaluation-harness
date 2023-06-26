@@ -12,11 +12,11 @@ os.makedirs(parsedir, exist_ok=True)
 
 def parse_comparator(comp, entry_point):
     # Translate comparators back to strings
-    if not isinstance(comp, ast.Call):
+    if not isinstance(comp, ast.Call) or not isinstance(comp.func, ast.Name):
         out = ast.unparse(comp)
         assert isinstance(out, str)
     else:
-        assert isinstance(comp.func, ast.Name)
+        assert isinstance(comp.func, ast.Name), (comp.func, ast.unparse(comp))
         if not comp.func.id == entry_point:
             out = {'out': None}
         else:
@@ -40,6 +40,8 @@ def parse_line(tree, entry_point,):
             return None
         assert isinstance(tree.left, ast.Call), (l, tree.left)
         assert isinstance(tree.left.func, ast.Name)
+        if not tree.left.func.id == entry_point:
+            return None
         assert tree.left.func.id == entry_point, (l, tree.left.func.id, entry_point)
         args = tree.left.args
         # Translate args back to strings
@@ -58,15 +60,38 @@ def parse_line(tree, entry_point,):
             out = tree.comparators[0].value
         elif isinstance(tree.ops[0], ast.NotEq):
             out = {'noteq': ast.unparse(tree.comparators[0])}
+        elif isinstance(tree.ops[0], ast.Gt):
+            assert isinstance(tree.ops[0], ast.Gt), (l, tree)
+            if len(tree.comparators) == 1:
+                out = parse_comparator(tree.comparators[0], entry_point)
+            else:
+                out = {'comparators': [parse_comparator(comp, entry_point) for comp in tree.comparators]}
+            out = {'gt': out}
         else:
             assert False, (l, tree.ops[0])
     elif isinstance(tree, ast.Call):
         assert isinstance(tree.func, ast.Name)
-        assert tree.func.id == entry_point
-        args = tree.args
-        # Translate args back to strings
-        args = tuple(ast.unparse(arg) for arg in args)
-        out = True
+        if tree.func.id == entry_point:
+            args = tree.args
+            # Translate args back to strings
+            args = tuple(ast.unparse(arg) for arg in args)
+            out = True
+        elif tree.func.id == 'isinstance':
+            assert len(tree.args) == 2
+            if isinstance(tree.args[0], ast.Name) and tree.args[0].id == entry_point:
+                return None
+            assert isinstance(tree.args[0], ast.Call), (l, tree.args[0])
+            assert isinstance(tree.args[0].func, ast.Name)
+            assert tree.args[0].func.id == entry_point
+            args = tree.args[0].args
+            # Translate args back to strings
+            args = tuple(ast.unparse(arg) for arg in args)
+            assert isinstance(tree.args[1], ast.Name)
+            out = {'isinstance': ast.unparse(tree.args[1])}
+        elif tree.func.id == 'callable' or tree.func.id == 'all':
+            return None
+        else:
+            assert False, (l, tree.func.id)
     elif isinstance(tree, ast.UnaryOp):
         assert isinstance(tree.op, ast.Not)
         if isinstance(tree.operand, ast.Call):
@@ -80,6 +105,8 @@ def parse_line(tree, entry_point,):
             return None
     elif isinstance(tree, ast.Name):
         # assert tree.id == entry_point, (l, tree.id)
+        return None
+    elif isinstance(tree, ast.Subscript):
         return None
     else:
         assert False, (l, tree)
@@ -96,13 +123,16 @@ def split_gen(g):
     assert('pass' in g), g
     g = g.split('\n')
     sg = [gg.strip() for gg in g]
-    index = len(sg) - 1 - sg[::-1].index('pass')
+    # index = len(sg) - 1 - sg[::-1].index('pass')
+    index = sg.index('pass')
     assert index != len(sg), g
     prompt = '\n'.join(sg[:index+1])
     gen = '\n'.join(sg[index+1:])
     return prompt, gen
 
 def parse_gen(g):
+    # print('---')
+    # print(g)
     prompt, g = split_gen(g)
     entry_point = get_entry_point(prompt)
 
@@ -150,7 +180,7 @@ def parse_gen(g):
         except SyntaxError:
             asserts = asserts[:asserts.rfind('assert')]
 
-    assert len(trees.body) > 0, g
+    # assert len(trees.body) > 0, (g, trees.body)
 
     new_gen = []
     for tree in trees.body:
@@ -163,11 +193,14 @@ def parse_gen(g):
 
 def parse(fn):
     assert fn.endswith('.json')
+    parsed_fn = osp.join(parsedir, fn)
+    if osp.exists(parsed_fn):
+        return
     print('Parsing %s' % fn)
     with open(osp.join(curdir, fn), 'r') as f:
         gen = json.load(f)
     gen = [[parse_gen(gg) for gg in g] for g in gen]
-    with open(osp.join(parsedir, fn), 'w') as f:
+    with open(parsed_fn, 'w') as f:
         json.dump(gen, f, indent=4)
 
 def main():

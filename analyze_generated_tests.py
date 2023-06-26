@@ -88,17 +88,17 @@ def analyze_tests(fn):
         # 'exec_out', 'assert_out', 'args', 'out', 'line'}
         results = json.load(f)
 
-    print()
-    print('Statistics of Generated Tests:')
-    valid_check_func = lambda x: True
-    print_statistics(results, valid_check_func)
+    # print()
+    # print('Statistics of Generated Tests:')
+    # valid_check_func = lambda x: True
+    # print_statistics(results, valid_check_func)
 
-    print()
-    print('Statistics of Generated Tests with Valid Inputs:')
-    valid_check_func = lambda x: 'pass' in x['syntax_out']
-    print_statistics(results, valid_check_func)
+    # print()
+    # print('Statistics of Generated Tests with Valid Inputs:')
+    # valid_check_func = lambda x: 'pass' in x['syntax_out']
+    # print_statistics(results, valid_check_func)
 
-    print()
+    # print()
     print('Statistics of Generated Tests with Valid Inputs & Outputs:')
     valid_check_func = lambda x: 'pass' in x['assert_out']
     print_statistics(results, valid_check_func)
@@ -115,8 +115,12 @@ def main(path):
         analyze_tests(fn)
 
 if __name__ == '__main__':
-    curdir = osp.dirname(osp.abspath(__file__))
-    curdir = osp.join(curdir, 'gen_tests')
-    main(osp.join(curdir, 'gen_asserts', 'eval_results_faster_mp'))
-    main(osp.join(curdir, 'gen_doctests', 'eval_results_faster_mp'))
-    main(osp.join(curdir, 'gen_unittest', 'eval_results_faster_mp'))
+    if sys.argv[1:]:
+        for fn in sys.argv[1:]:
+            analyze_tests(fn)
+    else:
+        curdir = osp.dirname(osp.abspath(__file__))
+        curdir = osp.join(curdir, 'gen_tests')
+        main(osp.join(curdir, 'gen_asserts', 'eval_results_faster_mp'))
+        main(osp.join(curdir, 'gen_doctests', 'eval_results_faster_mp'))
+        main(osp.join(curdir, 'gen_unittest', 'eval_results_faster_mp'))

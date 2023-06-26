@@ -49,6 +49,7 @@ def main(args):
         for cv_gen_filename in cur_cv_gen_filenames:
             with open(osp.join(cv_gen_dir, cv_gen_filename), 'r') as f:
                 generations += json.load(f)
+        assert(len(generations) == len(dataset)), (len(generations), len(dataset), cur_cv_gen_filenames)
         generations = [generations[i] for i in order]
         for di, (data, gen) in enumerate(zip(dataset, generations)):
             for g in gen:
