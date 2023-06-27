@@ -68,15 +68,15 @@ def main():
     for ri, (next_round_eval_results, next_round_check_syntax_results, _) in enumerate(results[1:]):
         eval_results = [
             [
-                ner if not er['passed'] else er
+                ner if len(csr) > 0 else er
                 for er, ner, csr in zip(eval_result, next_round_eval_result, check_syntax_results)
             ] for eval_result, next_round_eval_result, check_syntax_results in zip(eval_results, next_round_eval_results, check_syntax_results)
         ]
         check_syntax_results = [
             [
-                next_round_csr if not er['passed'] else csr
-                for er, csr, next_round_csr in zip(eval_result, check_syntax_result, next_round_check_syntax_result)
-            ] for eval_result, check_syntax_result, next_round_check_syntax_result in zip(eval_results, check_syntax_results, next_round_check_syntax_results)
+                next_round_csr if len(csr) > 0 else csr
+                for csr, next_round_csr in zip(check_syntax_result, next_round_check_syntax_result)
+            ] for check_syntax_result, next_round_check_syntax_result in zip(check_syntax_results, next_round_check_syntax_results)
         ]
         print("Round %d eval results:" % (ri + 1))
         print_statistics(eval_results, check_syntax_results)

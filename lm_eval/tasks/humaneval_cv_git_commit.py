@@ -1,5 +1,3 @@
-#@Hao @Jun 12, 2023
-#Just add comment mark before the feedback
 """Evaluating Large Language Models Trained on Code
 https://arxiv.org/abs/2107.03374
 
@@ -36,24 +34,44 @@ class HumanEval(Task):
 
     DATASET_PATH = "openai_humaneval"
 
-    def __init__(self):
+    @classmethod
+    def split_index(cls, n, k, d):
+        return int(n * (k / d)), int(n * ((k + 1) / d))
+
+    def __init__(self, args,):
         super().__init__(
             stop_words=["\nclass", "\ndef", "\n#", "\n@", "\nprint", "\nif", "\nFeedback", '\n"""',],
             requires_execution=True,
         )
 
+        unshuffled_task_id_list = [data['task_id'] for data in self.dataset['test']]
+
+        self.args = args
+        self.dataset = self.dataset.shuffle(seed=args.cv_seed)
+        start, end = HumanEval.split_index(len(self.dataset['test']), args.fold, args.num_folds)
+        self.dataset['test'] = self.dataset['test'].select(range(start, end))
+
+        selected_task_id_list = [data['task_id'] for data in self.dataset['test']]
+        self.selected_index_list = [unshuffled_task_id_list.index(task_id) for task_id in selected_task_id_list]
+        assert all([unshuffled_task_id_list[idx] == selected_task_id_list[i] for i, idx in enumerate(self.selected_index_list)]), "Selected index list must be a permutation of the unshuffled index list"
+
     def get_dataset(self, previous_generation_path=[]):
         """Returns dataset for the task or an iterable of any object, that get_prompt can handle"""
         self.previous_generation_path = previous_generation_path
-        if len(previous_generation_path) == 0:
-            return self.dataset['test']
+        assert(len(previous_generation_path) > 0), "Previous generation path must be provided"
+        # if len(previous_generation_path) == 0:
+            # return self.dataset['test']
 
         previous_generations = [] # [round_num, doc_num, n_samples]
         previous_n_samples = []
         for gen_path in previous_generation_path:
             with open(gen_path, "r") as f:
                 gen = json.load(f)
-                assert len(self.dataset['test']) == len(gen), "Previous generation must have the same length as the dataset"
+                gen = [gen[idx] for idx in self.selected_index_list]
+                assert len(self.dataset['test']) == len(gen), f"Previous generation must have the same length as the dataset, {len(self.dataset['test'])} != {len(gen)}"
+                # for data, g in zip(self.dataset['test'], gen):
+                    # assert data['prompt'].strip() in g[0], f"Prompt must be included in the previous generation, {data['prompt']} not in {g[0]}"
+                assert all([data['prompt'].strip() in g[0] for data, g in zip(self.dataset['test'], gen)])
             n_samples_list = [len(ggen) for ggen in gen]
             assert len(set(n_samples_list)) == 1, "All previous generations must have the same number of samples"
             assert len(previous_n_samples) == 0 or previous_n_samples[-1] % n_samples_list[0] == 0, "The number of samples in the previous generation must be a multiple of the number of samples in the current generation"
@@ -84,7 +102,7 @@ class HumanEval(Task):
         for round_num in range(self.num_of_rounds):
             previous_generation = doc[f"prv_gen_round_{round_num}"]
             previous_generation = previous_generation.strip()
-            prompt += '<commit_before>'+previous_generation + '<commit_msg>Feedback: The code above is incorrect. Please fix it.'
+            prompt += '<commit_before>' + previous_generation + '<commit_msg>Debugging'
         prompt += '<commit_after>'+original_prompt
         return prompt
 
@@ -118,7 +136,7 @@ class HumanEval(Task):
             (not used for Humaneval-Task)
         """
         prompt = self.get_prompt(self.processed_dataset[idx])
-        generation = generation[len(prompt) :]
+        generation = generation[len(prompt) :].replace('\nAnswer: ', '')
         prompt = prompt[prompt.rfind('<commit_after>'):].strip()
         return prompt + self._stop_at_stop_token(generation, self.stop_words)
 

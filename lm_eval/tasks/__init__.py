@@ -14,6 +14,9 @@ from . import (apps, codexglue_code_to_text, codexglue_text_to_text, conala,
                humaneval_gen_doctest,
                humaneval_git_commit,
                humaneval_simple_feedback_git,
+               humaneval_cv_git_commit,
+               mbpp_humaneval,
+               mbpp_humaneval_no_test,
                )
 
 TASK_REGISTRY = {
@@ -42,6 +45,9 @@ TASK_REGISTRY = {
     "humaneval_gen_doctest": humaneval_gen_doctest.HumanEval,
     "humaneval_git_commit": humaneval_git_commit.HumanEval,
     "humaneval_simple_feedback_git": humaneval_simple_feedback_git.HumanEval,
+    "humaneval_cv_git_commit": humaneval_cv_git_commit.HumanEval,
+    "mbpp_humaneval": mbpp_humaneval.MBPP,
+    "mbpp_humaneval_no_test": mbpp_humaneval_no_test.MBPP,
 }
 
 ALL_TASKS = sorted(list(TASK_REGISTRY))
