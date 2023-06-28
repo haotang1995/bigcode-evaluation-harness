@@ -39,6 +39,8 @@ def main():
                 gen = json.load(f)
             # Remove '\nAnswer: ' from generations
             gen = [[g.replace('\nAnswer: ', '') for g in gg] for gg in gen]
+            # Remove '<commit_after>' from generations
+            gen = [[g.replace('<commit_after>', '') for g in gg] for gg in gen]
             errors = [[check_code(gg) for gg in g] for g in gen]
             with open(osp.join(eval_dir, fn), 'w') as f:
                 json.dump(errors, f)

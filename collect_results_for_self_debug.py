@@ -19,6 +19,7 @@ check_syntax_results_dir = os.path.join(generation_results_dir, 'check_syntax_re
 check_syntax_results_filenames = os.listdir(check_syntax_results_dir)
 
 def retrieve_results(fn):
+    print('Retrieving results for %s:' % fn)
     fn = os.path.basename(fn).strip()
     if not fn.endswith('.json') or fn not in generation_filenames:
         print('Error: Invalid filename: %s' % fn)
@@ -41,6 +42,16 @@ def retrieve_results(fn):
         assert(len(check_syntax_results) == 164), "Error: This script is only valid for testing human-eval"
         assert(len(check_syntax_results[0]) == len(eval_results[0])), (len(check_syntax_results[0]), len(eval_results[0]), check_syntax_results[0], eval_results[0])
 
+    # Print the syntax error rates
+    syntax_error_rates = np.mean([np.mean([len(sr) > 0 for sr in syntax_results]) for syntax_results in check_syntax_results])
+    print('Syntax error rate: %.4f' % syntax_error_rates)
+
+    # Filter out the syntax errors and print the pass@one
+    filtered_eval_results = [[er for er, sr in zip(eval_result, syntax_result) if len(sr) == 0] for eval_result, syntax_result in zip(eval_results, check_syntax_results)]
+    pass_at_one = np.mean([np.mean([er['passed'] for er in eval_result]) if len(eval_result) > 0 else 0 for eval_result in filtered_eval_results])
+    print('After filtering out syntax errors, pass@1: %.4f' % pass_at_one)
+    print()
+
     return eval_results, check_syntax_results, pass_at_k
 
 def print_statistics(eval_results, check_syntax_results):
@@ -51,8 +62,9 @@ def print_statistics(eval_results, check_syntax_results):
     with_syntax_error_eval_results = [er for er, no_sr_er in zip(eval_results, no_syntax_error_eval_results) if len(no_sr_er) > 0]
     no_syntax_error_eval_results = [er for er in no_syntax_error_eval_results if len(er) > 0]
     print("Number of examples with full syntax errors: %d" % (len(eval_results) - len(no_syntax_error_eval_results)))
-    print('Pass@1 before filtering out syntax errors: %.4f' % (np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in with_syntax_error_eval_results])))
-    print('Pass@1 after filtering out syntax errors: %.4f' % (np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in no_syntax_error_eval_results])))
+    print('Pass@1 before filtering out syntax errors: %.4f' % (np.sum([np.mean([er['passed'] for er in eval_result]) for eval_result in with_syntax_error_eval_results])/164))
+    print('Pass@1 after filtering out syntax errors: %.4f' % (np.sum([np.mean([er['passed'] for er in eval_result]) for eval_result in no_syntax_error_eval_results])/164))
+    print()
 
 def main():
     filenames = sys.argv[1:]
