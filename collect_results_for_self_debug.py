@@ -64,6 +64,8 @@ def print_statistics(eval_results, check_syntax_results):
     print("Number of examples with full syntax errors: %d" % (len(eval_results) - len(no_syntax_error_eval_results)))
     print('Pass@1 before filtering out syntax errors: %.4f' % (np.sum([np.mean([er['passed'] for er in eval_result]) for eval_result in with_syntax_error_eval_results])/164))
     print('Pass@1 after filtering out syntax errors: %.4f' % (np.sum([np.mean([er['passed'] for er in eval_result]) for eval_result in no_syntax_error_eval_results])/164))
+    print('Pass@1 before filtering out syntax errors & all syntax error tasks: %.4f' % (np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in with_syntax_error_eval_results])))
+    print('Pass@1 after filtering out syntax errors & all syntax error tasks: %.4f' % (np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in no_syntax_error_eval_results])))
     print()
 
 def main():
