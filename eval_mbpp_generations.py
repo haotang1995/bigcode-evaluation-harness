@@ -104,7 +104,7 @@ def mbpp_preprocess(example):
     example["canonical_solution"] = new_code
     example["entry_point"] = func_name
     assert all([func_name in test for test in example["test_list"]])
-    example["test"] = 'def check(candidate)\n' + '\n'.join([indent+test.replace(func_name, 'candidate') for test in example["test_list"]])
+    example["test"] = 'def check(candidate):\n' + '\n'.join([indent+test.replace(func_name, 'candidate') for test in example["test_list"]])
     return example
 
 if __name__ == '__main__':
