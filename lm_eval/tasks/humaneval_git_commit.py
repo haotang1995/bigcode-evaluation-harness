@@ -117,7 +117,7 @@ class HumanEval(Task):
         """
         prompt = self.get_prompt(self.processed_dataset[idx])
         generation = generation[len(prompt) :]
-        prompt = prompt[prompt.rfind('<commit_after>'):].strip()
+        prompt = prompt[prompt.rfind('<commit_after>')+14:].strip()
         return prompt + self._stop_at_stop_token(generation, self.stop_words)
 
     def postprocess(self, generations, references):

@@ -30,6 +30,8 @@ def main():
                 gen = json.load(f)
             # Remove '\nAnswer: ' from gen
             gen = [[gg.replace('\nAnswer: ', '') for gg in g] for g in gen]
+            # Remove '<commit_after>' from gen
+            gen = [[gg.replace('<commit_after>', '') for gg in g] for g in gen]
             results, out = code_eval.compute(references=references, predictions=gen, k=[1, 10])
             print(results)
             print()
