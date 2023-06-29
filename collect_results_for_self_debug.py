@@ -17,6 +17,8 @@ eval_results_dir = os.path.join(generation_results_dir, 'eval_results')
 eval_results_filenames = os.listdir(eval_results_dir)
 check_syntax_results_dir = os.path.join(generation_results_dir, 'check_syntax_results')
 check_syntax_results_filenames = os.listdir(check_syntax_results_dir)
+out_dir = os.path.join(generation_results_dir, 'refinement_results', 'gt_test_cases')
+os.makedirs(out_dir, exist_ok=True,)
 
 def retrieve_results(fn):
     print('Retrieving results for %s:' % fn)
@@ -54,7 +56,7 @@ def retrieve_results(fn):
 
     return eval_results, check_syntax_results, pass_at_k
 
-def print_statistics(eval_results, check_syntax_results):
+def print_statistics(eval_results, check_syntax_results, prefix, fn):
     # Filter out the syntax errors
     no_syntax_error_eval_results = [[
         er for er, sr in zip(eval_result, syntax_result) if len(sr) == 0
@@ -68,6 +70,23 @@ def print_statistics(eval_results, check_syntax_results):
     print('Pass@1 after filtering out syntax errors & all syntax error tasks: %.4f' % (np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in no_syntax_error_eval_results])))
     print()
 
+    # Save current results
+    cur_out_dir = os.path.join(out_dir, prefix)
+    os.makedirs(cur_out_dir, exist_ok=True,)
+    combined_out = [
+        [{**er, 'syntax_errors': sr} for er, sr in zip(eval_result, syntax_result)]
+        for eval_result, syntax_result in zip(eval_results, check_syntax_results)
+    ]
+    results = {
+        'pass@1': np.mean([np.mean([er['passed'] for er in eval_result]) for eval_result in combined_out]),
+        'pass@1 (no syntax error tasks)': np.sum([np.mean([er['passed'] for er in eval_result]) for eval_result in no_syntax_error_eval_results])/164,
+    }
+    with open(os.path.join(cur_out_dir, fn), 'w') as f:
+        json.dump({
+            'results': results,
+            'out': combined_out,
+        }, f)
+
 def main():
     filenames = sys.argv[1:]
     assert(len(filenames) >= 2), "Error: At least 2 filenames are required"
@@ -77,7 +96,7 @@ def main():
     # Merge results
     eval_results, check_syntax_results, _ = results[0]
     print("Round 0 eval results:")
-    print_statistics(eval_results, check_syntax_results)
+    print_statistics(eval_results, check_syntax_results, 'round0', filenames[0])
 
     for ri, (next_round_eval_results, next_round_check_syntax_results, _) in enumerate(results[1:]):
         eval_results = [
@@ -93,7 +112,7 @@ def main():
             ] for eval_result, check_syntax_result, next_round_check_syntax_result in zip(eval_results, check_syntax_results, next_round_check_syntax_results)
         ]
         print("Round %d eval results:" % (ri + 1))
-        print_statistics(eval_results, check_syntax_results)
+        print_statistics(eval_results, check_syntax_results, 'round%d' % (ri + 1), filenames[ri+1])
 
 if __name__ == '__main__':
     main()
