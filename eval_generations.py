@@ -32,6 +32,10 @@ def main():
             gen = [[gg.replace('\nAnswer: ', '') for gg in g] for g in gen]
             # Remove '<commit_after>' from gen
             gen = [[gg.replace('<commit_after>', '') for gg in g] for g in gen]
+            # Remove '<eos>' from gen
+            gen = [[gg.replace('<eos>', '') for gg in g] for g in gen]
+            # Add stop words <commit_msg>
+            gen = [[gg[:gg.find('<commit_msg>')] if gg.find('<commit_msg>') >= 0 else gg for gg in g] for g in gen]
             results, out = code_eval.compute(references=references, predictions=gen, k=[1, 10])
             print(results)
             print()

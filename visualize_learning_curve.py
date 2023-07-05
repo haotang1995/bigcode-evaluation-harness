@@ -13,6 +13,7 @@ eval_dir = osp.join(gen_dir, 'eval_results')
 vis_dir = osp.join(curdir, 'visualization')
 
 def visualize_learning_curve(config_name, fn_list,):
+    print('Visualizing learning curve for %s' % config_name)
     eval_results = dict()
     for fn in fn_list:
         with open(osp.join(eval_dir, fn), 'r') as f:

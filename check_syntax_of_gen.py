@@ -41,6 +41,10 @@ def main():
             gen = [[g.replace('\nAnswer: ', '') for g in gg] for gg in gen]
             # Remove '<commit_after>' from generations
             gen = [[g.replace('<commit_after>', '') for g in gg] for gg in gen]
+            # Remove '<eos>' from generations
+            gen = [[g.replace('<eos>', '') for g in gg] for gg in gen]
+            # Add stop words <commit_msg>
+            gen = [[gg[:gg.find('<commit_msg>')] if gg.find('<commit_msg>') >= 0 else gg for gg in g] for g in gen]
             errors = [[check_code(gg) for gg in g] for g in gen]
             with open(osp.join(eval_dir, fn), 'w') as f:
                 json.dump(errors, f)
