@@ -91,12 +91,15 @@ def parse_line(tree, entry_point,):
         elif tree.func.id == 'callable' or tree.func.id == 'all':
             return None
         else:
+            return None
             assert False, (l, tree.func.id)
     elif isinstance(tree, ast.UnaryOp):
         assert isinstance(tree.op, ast.Not)
         if isinstance(tree.operand, ast.Call):
             assert isinstance(tree.operand.func, ast.Name)
-            assert tree.operand.func.id == entry_point
+            if tree.operand.func.id != entry_point:
+                return None
+            assert tree.operand.func.id == entry_point, (l, tree.operand.func.id, entry_point)
             args = tree.operand.args
             # Translate args back to strings
             args = tuple(ast.unparse(arg) for arg in args)
@@ -107,6 +110,10 @@ def parse_line(tree, entry_point,):
         # assert tree.id == entry_point, (l, tree.id)
         return None
     elif isinstance(tree, ast.Subscript):
+        return None
+    elif isinstance(tree, ast.BinOp):
+        return None
+    elif isinstance(tree, ast.Constant):
         return None
     else:
         assert False, (l, tree)

@@ -106,10 +106,25 @@ def main(curdir):
     for fn in filenames:
         eval_parse_file(fn, parse_dir, eval_dir)
 
+import argparse
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--fn', type=str, default=None)
+    args = parser.parse_args()
+    return args
+
 if __name__ == '__main__':
-    curdir = osp.dirname(osp.abspath(__file__))
-    curdir = osp.join(curdir, 'gen_tests')
-    main(osp.join(curdir, 'gen_asserts'))
-    main(osp.join(curdir, 'gen_doctest'))
-    main(osp.join(curdir, 'gen_unittest'))
+    args = get_args()
+    if args.fn is None:
+        curdir = osp.dirname(osp.abspath(__file__))
+        curdir = osp.join(curdir, 'gen_tests')
+        main(osp.join(curdir, 'gen_asserts'))
+        main(osp.join(curdir, 'gen_doctest'))
+        main(osp.join(curdir, 'gen_unittest'))
+    else:
+        fn = args.fn
+        assert osp.isfile(fn)
+        parse_dir = osp.join(osp.dirname(osp.abspath(fn)), 'parse_results')
+        eval_dir = osp.join(osp.dirname(osp.abspath(fn)), 'eval_results')
+        eval_parse_file(osp.basename(fn), parse_dir, eval_dir)
 
